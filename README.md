@@ -58,7 +58,7 @@ MCP_TRANSPORT=http npx -y @wudidada/zentao-mcp-server
 }
 ```
 
-修改配置后请**完全重启 Cursor**。也可将 `args` 中的包名改为固定版本，例如 `@wudidada/zentao-mcp-server@1.0.0`。
+修改配置后请**完全重启 Cursor**。也可将 `args` 中的包名改为固定版本，例如 `@wudidada/zentao-mcp-server@1.0.1`。
 
 ### 2.3 维护者：发布到 npm
 

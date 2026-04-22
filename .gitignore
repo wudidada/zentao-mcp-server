@@ -32,6 +32,7 @@ tmp/
 temp/
 *.tmp
 .cache/
+*.tgz
 
 # Vitest
 .vitest/

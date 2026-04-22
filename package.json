@@ -1,13 +1,14 @@
 {
   "name": "@wudidada/zentao-mcp-server",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "ZenTao API V1.0 MCP Server（禅道 MCP：登录、Bug 查询/解决/激活等）",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "zentao-mcp-server": "./dist/index.js"
+    "zentao-mcp-server": "cli.mjs"
   },
   "files": [
+    "cli.mjs",
     "dist",
     "README.md"
   ],
