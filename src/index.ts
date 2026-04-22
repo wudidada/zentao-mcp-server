@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { logger } from "./logger.js";
 import { startHttpServer } from "./server/http.js";
 import { startStdioServer } from "./server/stdio.js";

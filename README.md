@@ -18,7 +18,61 @@ cp .env.example .env
 
 请在 `.env` 中配置禅道地址与鉴权信息（推荐在运行时通过 `initZentao` 传入账号密码，不在文件中存明文）。
 
-## 2. 启动方式
+## 2. 从 npm / npx 运行（其它机器推荐）
+
+npm 包名：**`@wudidada/zentao-mcp-server`**（作用域包；可执行命令 **`zentao-mcp-server`**）。
+
+要求：**Node.js >= 20**。Linux/macOS 建议安装系统 **`curl`**（默认 HTTP 后端为 `curl`）。
+
+### 2.1 命令行试跑
+
+```bash
+npx -y @wudidada/zentao-mcp-server
+```
+
+HTTP 模式示例：
+
+```bash
+MCP_TRANSPORT=http npx -y @wudidada/zentao-mcp-server
+```
+
+### 2.2 Cursor `mcp.json`（stdio + 环境变量）
+
+在项目或用户目录下的 `.cursor/mcp.json` 中配置，例如：
+
+```json
+{
+  "mcpServers": {
+    "zentao": {
+      "command": "npx",
+      "args": ["-y", "@wudidada/zentao-mcp-server"],
+      "env": {
+        "ZENTAO_BASE_URL": "http://your-host/zentao/api.php/v1",
+        "ZENTAO_ACCOUNT": "your_account",
+        "ZENTAO_PASSWORD": "your_password",
+        "ZENTAO_HTTP_BACKEND": "curl",
+        "LOG_LEVEL": "info"
+      }
+    }
+  }
+}
+```
+
+修改配置后请**完全重启 Cursor**。也可将 `args` 中的包名改为固定版本，例如 `@wudidada/zentao-mcp-server@1.0.0`。
+
+### 2.3 维护者：发布到 npm
+
+```bash
+npm run build
+npm test
+npm publish --access public
+```
+
+首次发布前需 `npm login`，并确保 `package.json` 中 `version` 未被占用。
+
+源码仓库：<https://github.com/wudidada/zentao-mcp-server>
+
+## 3. 启动方式
 
 ### stdio（本地 IDE 首选）
 
@@ -38,14 +92,14 @@ npm run start:http
 curl http://localhost:3000/healthz
 ```
 
-## 3. 构建与测试
+## 4. 构建与测试
 
 ```bash
 npm run build
 npm test
 ```
 
-## 4. MCP 工具参数说明
+## 5. MCP 工具参数说明
 
 ### initZentao
 
@@ -80,7 +134,7 @@ npm test
 - `resolution.duplicateBug?: number`（当 `resolution=duplicate` 时必填）
 - `resolution.comment?: string`
 
-## 5. 安全与运维基线
+## 6. 安全与运维基线
 
 - 日志默认对 `password/token/authorization` 做脱敏处理
 - 默认请求超时 `10s`
@@ -89,7 +143,7 @@ npm test
 - 若配置了 `ZENTAO_BASE_URL` + `ZENTAO_ACCOUNT` +（`ZENTAO_PASSWORD` 或 `ZENTAO_TOKEN`），进程启动时会自动登录，无需每次先调 `initZentao`
 - `ZENTAO_HTTP_BACKEND`：`axios` 使用 Node 内置 HTTP；`curl` 调用系统 `curl`。在非 Windows 上默认 `curl`，用于规避部分禅道实例对「Node 客户端 + `Token` 头 + GET」长时间无响应的问题
 
-## 5.1 环境变量一览
+### 6.1 环境变量一览
 
 | 变量 | 说明 |
 | --- | --- |
@@ -97,7 +151,7 @@ npm test
 | `ZENTAO_ACCOUNT` / `ZENTAO_PASSWORD` / `ZENTAO_TOKEN` | 自动登录用（密码与 token 二选一） |
 | `ZENTAO_HTTP_BACKEND` | `axios` 或 `curl`；未设置时 Linux/macOS 默认 `curl`，Windows 默认 `axios` |
 
-## 6. 项目结构
+## 7. 项目结构
 
 ```text
 src/
@@ -108,7 +162,7 @@ src/
   tools/         # MCP 工具实现
 ```
 
-## 7. 注意事项
+## 8. 注意事项
 
 - 当前实现按禅道 API V1.0 常见 REST 路径封装（`/tokens`、`/bugs`、`/products`）。
 - **解决 Bug**：官方 v1 接口为 **`POST /bugs/{id}/resolve`**（不是 PUT）。若误用 PUT，可能出现 HTTP 成功但禅道未真正更新状态的情况。
