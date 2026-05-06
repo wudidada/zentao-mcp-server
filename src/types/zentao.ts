@@ -24,14 +24,26 @@ export interface ZentaoProduct {
   code?: string;
 }
 
+export interface ZentaoUserRef {
+  id?: number;
+  account?: string;
+  avatar?: string;
+  realname?: string;
+}
+
+export interface ZentaoStatusRef {
+  code?: string;
+  name?: string;
+}
+
 export interface ZentaoBug {
   id: number;
   title: string;
-  status: string;
+  status: string | ZentaoStatusRef;
   severity?: number;
   pri?: number;
-  assignedTo?: string;
-  openedBy?: string;
+  assignedTo?: string | ZentaoUserRef | null;
+  openedBy?: string | ZentaoUserRef | null;
   openedDate?: string;
 }
 

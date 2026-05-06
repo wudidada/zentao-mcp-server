@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 import { z } from "zod";
 
-dotenv.config();
+dotenv.config({ quiet: true });
 
 const envSchema = z.object({
   ZENTAO_BASE_URL: z.string().url().optional(),

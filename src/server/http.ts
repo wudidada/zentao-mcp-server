@@ -11,6 +11,7 @@ import { logger } from "../logger.js";
 import { createMcpServer } from "./createMcpServer.js";
 import { createAppContext } from "./context.js";
 import { tryAutoLoginFromEnv } from "../bootstrap/autoLoginFromEnv.js";
+import { isMainModule } from "../utils/isMainModule.js";
 
 type SessionState = {
   transport: StreamableHTTPServerTransport;
@@ -115,7 +116,7 @@ export async function startHttpServer(): Promise<void> {
   });
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMainModule(import.meta.url)) {
   startHttpServer().catch((error) => {
     logger.error({ err: error }, "HTTP 服务启动失败");
     process.exit(1);

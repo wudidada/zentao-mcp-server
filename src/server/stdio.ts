@@ -4,6 +4,7 @@ import { config } from "../config.js";
 import { createAppContext } from "./context.js";
 import { createMcpServer } from "./createMcpServer.js";
 import { tryAutoLoginFromEnv } from "../bootstrap/autoLoginFromEnv.js";
+import { isMainModule } from "../utils/isMainModule.js";
 
 export async function startStdioServer(): Promise<void> {
   const context = createAppContext(config.ZENTAO_BASE_URL);
@@ -14,7 +15,7 @@ export async function startStdioServer(): Promise<void> {
   logger.info("ZenTao MCP stdio 服务已启动");
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMainModule(import.meta.url)) {
   startStdioServer().catch((error) => {
     logger.error({ err: error }, "启动 stdio 服务失败");
     process.exit(1);

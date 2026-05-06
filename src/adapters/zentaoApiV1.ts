@@ -406,34 +406,59 @@ export class ZentaoApiV1Adapter {
     const collected: ZentaoBug[] = [];
     let page = 1;
     let total = Number.POSITIVE_INFINITY;
+    const currentAccount = this.session?.account;
 
     while (collected.length < total) {
       const data = await this.request<PaginatedList<ZentaoBug> | ZentaoBug[]>({
         method: "GET",
-        url: "/bugs",
+        url: `/products/${productId}/bugs`,
         params: {
-          product: productId,
-          assignedTo: "me",
           limit: pageSize,
           page,
-          ...(status && status !== "all" ? { status } : {}),
         },
       });
 
       if (Array.isArray(data)) {
-        return data;
+        return data.filter((bug) => this.isBugAssignedToCurrentUser(bug, currentAccount)).filter((bug) =>
+          this.matchesBugStatus(bug, status),
+        );
       }
 
-      const batch = data.bugs ?? [];
+      const batch = (data.bugs ?? [])
+        .filter((bug) => this.isBugAssignedToCurrentUser(bug, currentAccount))
+        .filter((bug) => this.matchesBugStatus(bug, status));
       collected.push(...batch);
       total = typeof data.total === "number" ? data.total : collected.length;
 
-      if (batch.length === 0 || batch.length < pageSize) {
+      const pageItems = data.bugs ?? [];
+      if (pageItems.length === 0 || pageItems.length < pageSize) {
         break;
       }
       page += 1;
     }
 
     return collected;
+  }
+
+  private isBugAssignedToCurrentUser(bug: ZentaoBug, account?: string): boolean {
+    if (!account) {
+      return false;
+    }
+
+    const assignedTo = bug.assignedTo;
+    if (typeof assignedTo === "string") {
+      return assignedTo === account;
+    }
+
+    return assignedTo?.account === account;
+  }
+
+  private matchesBugStatus(bug: ZentaoBug, expectedStatus?: string): boolean {
+    if (!expectedStatus || expectedStatus === "all") {
+      return true;
+    }
+
+    const bugStatus = typeof bug.status === "string" ? bug.status : bug.status?.code;
+    return bugStatus === expectedStatus;
   }
 }
