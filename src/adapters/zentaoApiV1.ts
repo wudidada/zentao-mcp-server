@@ -39,6 +39,8 @@ export class ZentaoApiV1Adapter {
   private readonly retryCount: number;
   private readonly timeoutMs: number;
   private session?: ZentaoAuthSession;
+  private reauthenticationHandler?: () => Promise<ZentaoAuthSession>;
+  private reauthenticationPromise?: Promise<ZentaoAuthSession>;
 
   constructor(options: ApiClientOptions) {
     this.timeoutMs = options.timeoutMs;
@@ -95,6 +97,12 @@ export class ZentaoApiV1Adapter {
 
   public clearSession(): void {
     this.session = undefined;
+  }
+
+  public setReauthenticationHandler(
+    handler: () => Promise<ZentaoAuthSession>,
+  ): void {
+    this.reauthenticationHandler = handler;
   }
 
   public async getProducts(): Promise<ZentaoProduct[]> {
@@ -277,7 +285,7 @@ export class ZentaoApiV1Adapter {
 
   private async withAuthRequest<T>(runner: () => Promise<T>): Promise<T> {
     if (!this.session?.token) {
-      throw new AuthError("尚未登录禅道，请先调用 initZentao。");
+      await this.reauthenticate();
     }
 
     try {
@@ -285,9 +293,37 @@ export class ZentaoApiV1Adapter {
     } catch (error) {
       if (error instanceof RemoteApiError && error.statusCode === 401) {
         this.clearSession();
-        throw new AuthError("禅道会话已过期，请重新调用 initZentao。", error);
+        await this.reauthenticate();
+        try {
+          return await runner();
+        } catch (retryError) {
+          if (retryError instanceof RemoteApiError && retryError.statusCode === 401) {
+            this.clearSession();
+            throw new AuthError("禅道自动续登后认证仍失败，请检查账号配置。", retryError);
+          }
+          throw retryError;
+        }
       }
       throw error;
+    }
+  }
+
+  private async reauthenticate(): Promise<ZentaoAuthSession> {
+    if (!this.reauthenticationHandler) {
+      throw new AuthError("尚未登录禅道，且未配置自动续登凭据。");
+    }
+
+    if (!this.reauthenticationPromise) {
+      this.reauthenticationPromise = this.reauthenticationHandler();
+    }
+
+    const currentPromise = this.reauthenticationPromise;
+    try {
+      return await currentPromise;
+    } finally {
+      if (this.reauthenticationPromise === currentPromise) {
+        this.reauthenticationPromise = undefined;
+      }
     }
   }
 

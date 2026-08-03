@@ -11,15 +11,12 @@ const bugResolutionEnum = z.enum([
   "external",
 ]);
 
-export const initZentaoSchema = z
-  .object({
-    baseUrl: z.string().url().optional(),
-    account: z.string().min(1, "account 不能为空。").optional(),
-    password: z.string().min(1).optional(),
-    token: z.string().min(1).optional(),
-  })
-  .refine((data) => Boolean(data.account), "account 为必填。")
-  .refine((data) => Boolean(data.password || data.token), "password 或 token 至少提供一个。");
+export const initZentaoSchema = z.object({
+  baseUrl: z.string().url().optional(),
+  account: z.string().min(1, "account 不能为空。").optional(),
+  password: z.string().min(1).optional(),
+  token: z.string().min(1).optional(),
+});
 
 export const getMyBugsSchema = z.object({
   status: bugStatusEnum.optional().default("active"),

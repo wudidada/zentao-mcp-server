@@ -104,11 +104,12 @@ npm test
 ### initZentao
 
 - `baseUrl?: string`
-- `account: string`
+- `account?: string`
 - `password?: string`
 - `token?: string`
 
-> `password` 与 `token` 二选一。
+> 参数为空时自动回退读取 `ZENTAO_BASE_URL`、`ZENTAO_ACCOUNT` 以及
+> `ZENTAO_PASSWORD`/`ZENTAO_TOKEN`。显式传参时 `password` 与 `token` 二选一。
 
 ### getMyBugs
 
@@ -141,6 +142,8 @@ npm test
 - 查询接口（GET）支持指数退避重试
 - HTTP 模式提供 `/healthz` 健康检查
 - 若配置了 `ZENTAO_BASE_URL` + `ZENTAO_ACCOUNT` +（`ZENTAO_PASSWORD` 或 `ZENTAO_TOKEN`），进程启动时会自动登录，无需每次先调 `initZentao`
+- 会话缺失或接口返回 401 时，会使用内存中缓存的登录配置自动续登一次；并发请求共享同一次续登
+- 启动阶段自动登录失败不会阻止 MCP 服务启动，首次业务调用会再次尝试登录
 - `ZENTAO_HTTP_BACKEND`：`axios` 使用 Node 内置 HTTP；`curl` 调用系统 `curl`。在非 Windows 上默认 `curl`，用于规避部分禅道实例对「Node 客户端 + `Token` 头 + GET」长时间无响应的问题
 
 ### 6.1 环境变量一览
@@ -167,4 +170,3 @@ src/
 - 当前实现按禅道 API V1.0 常见 REST 路径封装（`/tokens`、`/bugs`、`/products`）。
 - **解决 Bug**：官方 v1 接口为 **`POST /bugs/{id}/resolve`**（不是 PUT）。若误用 PUT，可能出现 HTTP 成功但禅道未真正更新状态的情况。
 - 如果你的禅道实例路径或鉴权字段有差异，可在 `src/adapters/zentaoApiV1.ts` 适配。
-

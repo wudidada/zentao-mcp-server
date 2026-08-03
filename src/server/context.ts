@@ -18,6 +18,7 @@ export function createAppContext(baseUrl?: string): AppContext {
 
   const authService = new AuthService(adapter);
   const bugService = new BugService(adapter);
+  adapter.setReauthenticationHandler(() => authService.reauthenticate());
 
   return {
     adapter,

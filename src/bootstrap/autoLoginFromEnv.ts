@@ -27,12 +27,19 @@ export async function tryAutoLoginFromEnv(context: AppContext): Promise<void> {
 
   context.adapter.setBaseUrl(baseUrl);
 
-  if (token) {
-    await context.authService.initLogin({ account, token });
-    logger.info({ account }, "已从环境变量使用 token 完成禅道初始化。");
-    return;
-  }
+  try {
+    if (token) {
+      await context.authService.initLogin({ account, password, token });
+      logger.info({ account }, "已从环境变量使用 token 完成禅道初始化。");
+      return;
+    }
 
-  await context.authService.initLogin({ account, password });
-  logger.info({ account }, "已从环境变量使用账号密码完成禅道登录。");
+    await context.authService.initLogin({ account, password });
+    logger.info({ account }, "已从环境变量使用账号密码完成禅道登录。");
+  } catch (error) {
+    logger.warn(
+      { err: error, account },
+      "环境变量自动登录失败，MCP 将继续启动并在首次调用时自动重试。",
+    );
+  }
 }

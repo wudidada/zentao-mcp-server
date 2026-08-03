@@ -1,6 +1,7 @@
 import nock from "nock";
 import { afterEach, describe, expect, it } from "vitest";
 import { ZentaoApiV1Adapter } from "../src/adapters/zentaoApiV1.js";
+import { AuthService } from "../src/services/authService.js";
 import { AuthError } from "../src/errors.js";
 
 describe("ZentaoApiV1Adapter", () => {
@@ -120,6 +121,117 @@ describe("ZentaoApiV1Adapter", () => {
     });
 
     await expect(adapter.getProducts()).rejects.toBeInstanceOf(AuthError);
+  });
+
+  it("会话缺失时使用缓存的账号密码自动续登", async () => {
+    const scope = nock("https://zentao.example.com")
+      .post("/tokens", { account: "alice", password: "pwd" })
+      .reply(200, { token: "token-1" })
+      .post("/tokens", { account: "alice", password: "pwd" })
+      .reply(200, { token: "token-2" })
+      .get("/products")
+      .matchHeader("token", "token-2")
+      .reply(200, { products: [{ id: 1, name: "P1" }] });
+
+    const adapter = new ZentaoApiV1Adapter({
+      baseURL: "https://zentao.example.com",
+      timeoutMs: 3_000,
+      retryCount: 0,
+    });
+    const authService = new AuthService(adapter);
+    adapter.setReauthenticationHandler(() => authService.reauthenticate());
+
+    await authService.initLogin({ account: "alice", password: "pwd" });
+    adapter.clearSession();
+
+    const products = await adapter.getProducts();
+    expect(products).toHaveLength(1);
+    expect(scope.isDone()).toBe(true);
+  });
+
+  it("收到 401 后自动续登并重试原请求一次", async () => {
+    const scope = nock("https://zentao.example.com")
+      .post("/tokens", { account: "alice", password: "pwd" })
+      .reply(200, { token: "token-1" })
+      .get("/products")
+      .matchHeader("token", "token-1")
+      .reply(401, { error: "expired" })
+      .post("/tokens", { account: "alice", password: "pwd" })
+      .reply(200, { token: "token-2" })
+      .get("/products")
+      .matchHeader("token", "token-2")
+      .reply(200, { products: [{ id: 1, name: "P1" }] });
+
+    const adapter = new ZentaoApiV1Adapter({
+      baseURL: "https://zentao.example.com",
+      timeoutMs: 3_000,
+      retryCount: 0,
+    });
+    const authService = new AuthService(adapter);
+    adapter.setReauthenticationHandler(() => authService.reauthenticate());
+
+    await authService.initLogin({ account: "alice", password: "pwd" });
+    const products = await adapter.getProducts();
+
+    expect(products).toHaveLength(1);
+    expect(adapter.getSession()?.token).toBe("token-2");
+    expect(scope.isDone()).toBe(true);
+  });
+
+  it("并发请求只触发一次自动续登", async () => {
+    const scope = nock("https://zentao.example.com")
+      .post("/tokens", { account: "alice", password: "pwd" })
+      .reply(200, { token: "token-1" })
+      .post("/tokens", { account: "alice", password: "pwd" })
+      .delay(30)
+      .reply(200, { token: "token-2" })
+      .get("/products")
+      .matchHeader("token", "token-2")
+      .twice()
+      .reply(200, { products: [{ id: 1, name: "P1" }] });
+
+    const adapter = new ZentaoApiV1Adapter({
+      baseURL: "https://zentao.example.com",
+      timeoutMs: 3_000,
+      retryCount: 0,
+    });
+    const authService = new AuthService(adapter);
+    adapter.setReauthenticationHandler(() => authService.reauthenticate());
+
+    await authService.initLogin({ account: "alice", password: "pwd" });
+    adapter.clearSession();
+
+    const [first, second] = await Promise.all([
+      adapter.getProducts(),
+      adapter.getProducts(),
+    ]);
+
+    expect(first).toHaveLength(1);
+    expect(second).toHaveLength(1);
+    expect(scope.isDone()).toBe(true);
+  });
+
+  it("GET 网络超时后按配置重试", async () => {
+    const scope = nock("https://zentao.example.com")
+      .post("/tokens", { account: "alice", password: "pwd" })
+      .reply(200, { token: "token-1" })
+      .get("/products")
+      .delay(200)
+      .reply(200, { products: [] })
+      .get("/products")
+      .reply(200, { products: [{ id: 1, name: "P1" }] });
+
+    const adapter = new ZentaoApiV1Adapter({
+      baseURL: "https://zentao.example.com",
+      timeoutMs: 50,
+      retryCount: 1,
+    });
+
+    await adapter.login("alice", "pwd");
+    const products = await adapter.getProducts();
+
+    expect(products).toHaveLength(1);
+    expect(scope.isDone()).toBe(true);
   });
 
   it("解决 bug 使用 POST /bugs/:id/resolve（禅道 API v1）", async () => {
